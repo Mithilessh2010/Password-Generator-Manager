@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Password Generator & Manager</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 1em;
+      background: #f4f4f4;
+      color: #333;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: white;
+      padding: 1em;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    .password-display {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #eee;
+      padding: 0.5em;
+      border-radius: 5px;
+      margin-bottom: 1em;
+    }
+    input[type="text"], input[type="password"], input[type="url"] {
+      width: 100%;
+      padding: 0.5em;
+      margin-bottom: 0.5em;
+    }
+    button {
+      padding: 0.5em 1em;
+      margin: 0.25em 0;
+      border: none;
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .entry {
+      background: #fafafa;
+      border: 1px solid #ddd;
+      padding: 0.5em;
+      border-radius: 5px;
+      margin: 0.5em 0;
+    }
+    .entry a {
+      color: #1a73e8;
+      text-decoration: none;
+    }
+    .entry input[type="password"] {
+      width: 70%;
+    }
+    .flex {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Password Generator & Manager</h1>
+
+    <div class="password-display">
+      <span id="generatedPassword">Click Generate</span>
+      <button onclick="copyPassword()">Copy</button>
+    </div>
+
+    <label><input type="checkbox" id="includeSymbols"> Include Symbols</label><br>
+    <label><input type="checkbox" id="includeNumbers" checked> Include Numbers</label><br>
+    <label><input type="checkbox" id="includeUppercase" checked> Include Uppercase</label><br>
+    <label><input type="checkbox" id="includeLowercase" checked> Include Lowercase</label><br>
+    <label>Password Length: <input type="number" id="passwordLength" value="16" min="4" max="64"></label><br>
+    <button onclick="generatePassword()">Generate Password</button>
+
+    <hr>
+    <h2>Save Password</h2>
+    <input type="text" id="accountName" placeholder="Account Name (e.g., Gmail)" />
+    <input type="url" id="accountURL" placeholder="Website URL (optional)" />
+    <input type="text" id="accountUsername" placeholder="Username or Email" />
+    <input type="password" id="accountPassword" placeholder="Password" />
+    <button onclick="savePassword()">Save</button>
+
+    <h2>Saved Passwords</h2>
+    <input type="text" id="search" placeholder="Search accounts..." oninput="loadPasswords()" />
+    <div id="savedPasswords"></div>
+  </div>
+
+  <script>
+    function generatePassword() {
+      const length = parseInt(document.getElementById("passwordLength").value);
+      const includeSymbols = document.getElementById("includeSymbols").checked;
+      const includeNumbers = document.getElementById("includeNumbers").checked;
+      const includeUppercase = document.getElementById("includeUppercase").checked;
+      const includeLowercase = document.getElementById("includeLowercase").checked;
+
+      let chars = "";
+      if (includeSymbols) chars += "!@#$%^&*()_+~`|}{[]:;?><,./-=";
+      if (includeNumbers) chars += "0123456789";
+      if (includeUppercase) chars += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      if (includeLowercase) chars += "abcdefghijklmnopqrstuvwxyz";
+
+      if (!chars) {
+        alert("Please select at least one character set.");
+        return;
+      }
+
+      let password = "";
+      for (let i = 0; i < length; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      document.getElementById("generatedPassword").textContent = password;
+    }
+
+    function copyPassword() {
+      const password = document.getElementById("generatedPassword").textContent;
+      navigator.clipboard.writeText(password).then(() => alert("Password copied!"));
+    }
+
+    function savePassword() {
+      const name = document.getElementById("accountName").value.trim();
+      const url = document.getElementById("accountURL").value.trim();
+      const username = document.getElementById("accountUsername").value.trim();
+      const password = document.getElementById("accountPassword").value.trim();
+
+      if (!name || !username || !password) {
+        alert("Please fill out account name, username, and password.");
+        return;
+      }
+
+      const saved = JSON.parse(localStorage.getItem("passwords") || "[]");
+      saved.push({ name, url, username, password });
+      localStorage.setItem("passwords", JSON.stringify(saved));
+
+      document.getElementById("accountName").value = "";
+      document.getElementById("accountURL").value = "";
+      document.getElementById("accountUsername").value = "";
+      document.getElementById("accountPassword").value = "";
+      loadPasswords();
+    }
+
+    function loadPasswords() {
+      const searchTerm = document.getElementById("search").value.toLowerCase();
+      const saved = JSON.parse(localStorage.getItem("passwords") || "[]");
+      const container = document.getElementById("savedPasswords");
+      container.innerHTML = "";
+      saved.forEach((entry, index) => {
+        if (
+          entry.name.toLowerCase().includes(searchTerm) ||
+          entry.username.toLowerCase().includes(searchTerm)
+        ) {
+          const div = document.createElement("div");
+          div.className = "entry";
+          div.innerHTML = `
+            <strong>${entry.name}</strong> ${entry.url ? `- <a href="${entry.url}" target="_blank">Visit</a>` : ""}<br>
+            Username: ${entry.username}<br>
+            <div class="flex">
+              <input type="password" value="${entry.password}" readonly id="pwd-${index}">
+              <button onclick="togglePassword(${index})">Show</button>
+              <button onclick="copySavedPassword(${index})">Copy</button>
+              <button onclick="deletePassword(${index})">Delete</button>
+            </div>
+          `;
+          container.appendChild(div);
+        }
+      });
+    }
+
+    function togglePassword(index) {
+      const input = document.getElementById(`pwd-${index}`);
+      input.type = input.type === "password" ? "text" : "password";
+    }
+
+    function copySavedPassword(index) {
+      const input = document.getElementById(`pwd-${index}`);
+      navigator.clipboard.writeText(input.value).then(() => alert("Password copied!"));
+    }
+
+    function deletePassword(index) {
+      const saved = JSON.parse(localStorage.getItem("passwords") || "[]");
+      saved.splice(index, 1);
+      localStorage.setItem("passwords", JSON.stringify(saved));
+      loadPasswords();
+    }
+
+    loadPasswords();
+  </script>
+</body>
+</html>
